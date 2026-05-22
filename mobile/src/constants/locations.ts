@@ -1,0 +1,18 @@
+export const VOIVODESHIP_LABELS: Record<string, string> = {
+  'dolnoslaskie': 'Dolnośląskie',
+  'kujawsko-pomorskie': 'Kujawsko-pomorskie',
+  'lubelskie': 'Lubelskie',
+  'lubuskie': 'Lubuskie',
+  'lodzkie': 'Łódzkie',
+  'malopolskie': 'Małopolskie',
+  'mazowieckie': 'Mazowieckie',
+  'opolskie': 'Opolskie',
+  'podkarpackie': 'Podkarpackie',
+  'podlaskie': 'Podlaskie',
+  'pomorskie': 'Pomorskie',
+  'slaskie': 'Śląskie',
+  'swietokrzyskie': 'Świętokrzyskie',
+  'warminsko-mazurskie': 'Warmińsko-mazurskie',
+  'wielkopolskie': 'Wielkopolskie',
+  'zachodniopomorskie': 'Zachodniopomorskie',
+};
