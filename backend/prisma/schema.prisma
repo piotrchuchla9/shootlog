@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String?
+  name          String
+  googleId      String?  @unique
+  appleId       String?  @unique
+  shooterAlias  String?
+  ipscNumber    String?
+  pzssNumber    String?
+  region        String?
+  pushToken     String?
+  notifySignup  Boolean  @default(true)
+  notifyResults Boolean  @default(true)
+  tier          String   @default("free")
+  createdAt     DateTime @default(now())
+  results                 Result[]
+  savedEvents             UserSavedEvent[]
+  notificationPreference  NotificationPreference?
+}
+
+model Event {
+  id                String   @id @default(cuid())
+  externalId        String?
+  source            String
+  name              String
+  discipline        String
+  level             Int
+  location          String
+  city              String?
+  voivodeship       String?
+  lat               Float?
+  lng               Float?
+  startDate         DateTime
+  endDate           DateTime
+  registrationUrl   String?
+  registrationOpen  DateTime?
+  registrationClose DateTime?
+  maxShooters       Int?
+  currentShooters   Int?
+  entryFee          Int?
+  currency          String   @default("PLN")
+  organizerName     String?
+  status            String   @default("upcoming")
+  scrapedAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  results           Result[]
+  savedBy           UserSavedEvent[]
+
+  @@unique([externalId, source])
+}
+
+model Result {
+  id            String  @id @default(cuid())
+  eventId       String
+  event         Event   @relation(fields: [eventId], references: [id])
+  userId        String?
+  user          User?   @relation(fields: [userId], references: [id])
+  shooterName   String
+  shooterClub   String?
+  division      String
+  category      String?
+  totalScore    Float?
+  percentage    Float?
+  rank          Int?
+  rankDivision  Int?
+  stagesData    Json?
+  createdAt     DateTime @default(now())
+
+  @@unique([eventId, shooterName, division])
+}
+
+model UserSavedEvent {
+  userId  String
+  eventId String
+  user    User  @relation(fields: [userId], references: [id])
+  event   Event @relation(fields: [eventId], references: [id])
+  @@id([userId, eventId])
+}
+
+model NotificationPreference {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  enabled      Boolean  @default(true)
+  disciplines  String[]
+  levels       Int[]
+  voivodeships String[]
+  cities       String[]
+  updatedAt    DateTime @updatedAt
+}
+
+model ScraperLog {
+  id         String   @id @default(cuid())
+  source     String
+  status     String
+  message    String?
+  itemsFound Int      @default(0)
+  runAt      DateTime @default(now())
+}
