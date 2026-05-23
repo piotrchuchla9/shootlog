@@ -34,18 +34,36 @@ export function parseDateRange(str: string): { start: Date; end: Date } | null {
   return null;
 }
 
-// "L.II", "L2", "II", "Level 2" → 2
-export function parseLevelFromText(str: string): number {
-  str = str.trim().toUpperCase();
-  const roman: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5 };
+// "L1", "L.2", "LVL 3", "LEVEL III" → number
+// \b word-boundary prevents matching "VOL.8" or "LIGA" as false positives
+export function parseLevelFromText(str: string, fallback = 2): number {
+  const s = str.trim().toUpperCase();
+  const roman: Record<string, number> = { IV: 4, III: 3, II: 2, VI: 6, V: 5, I: 1 };
 
-  const digit = str.match(/L\.?(\d)/);
-  if (digit) return Number(digit[1]);
+  // digit form: L1  L.2  LVL3  LEVEL 4
+  const dig = s.match(/\bL(?:VL|EVEL)?\s*\.?\s*([1-5])\b/);
+  if (dig) return Number(dig[1]);
 
-  const romanMatch = str.match(/L\.?(I{1,3}V?|IV|V)/);
-  if (romanMatch) return roman[romanMatch[1]] ?? 1;
+  // Roman numeral form: LII  L.III  LEVEL III
+  const rom = s.match(/\bL(?:VL|EVEL)?\s*\.?\s*(IV|III|II|V|I)\b/);
+  if (rom) return roman[rom[1]] ?? fallback;
 
-  return 1;
+  return fallback;
+}
+
+// Keyword-based level detection — tries explicit marker first, then title keywords
+export function parseLevelFromName(name: string, fallback = 2): number {
+  // explicit L-marker in name takes priority
+  const explicit = parseLevelFromText(name, 0);
+  if (explicit > 0) return explicit;
+
+  const n = name.toLowerCase();
+  if (n.includes('świata') || n.includes('world'))                                   return 5;
+  if (n.includes('europy') || n.includes('europe') || n.includes('european') ||
+      n.includes('kontynentu') || n.includes('continental'))                         return 4;
+  if (n.includes('polski') || n.includes('poland') || n.includes('national') ||
+      n.includes('ogólnopolsk') || n.includes('krajow'))                             return 3;
+  return fallback;
 }
 
 export function guessDiscipline(name: string): string {

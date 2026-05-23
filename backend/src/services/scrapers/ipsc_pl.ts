@@ -92,7 +92,7 @@ export async function scrapeIpscPl(): Promise<void> {
       location: city ?? 'Polska',
       city,
       voivodeship: city ? guessVoivodeship(city) : undefined,
-      level: parseLevelFromText(name),
+      level: parseLevelFromText(name, 2),
       discipline: parseDiscipline(disciplineStr, name),
       startDate: parsed.start,
       endDate: parsed.end,
@@ -118,6 +118,7 @@ export async function scrapeIpscPl(): Promise<void> {
         create: ev,
         update: {
           status: ev.status,
+          location: ev.location,
           city: ev.city ?? null,
           voivodeship: ev.voivodeship ?? null,
           updatedAt: new Date(),

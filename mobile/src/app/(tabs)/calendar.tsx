@@ -12,13 +12,16 @@ import { useEvents } from '@/hooks/useEvents';
 import { useSavedIds, useToggleSave } from '@/hooks/useSavedEvents';
 import { EventCard } from '@/components/EventCard';
 import { FilterSheet } from '@/components/FilterSheet';
-import { DISCIPLINE_LABELS } from '@/constants/disciplines';
-import { VOIVODESHIP_LABELS } from '@/constants/locations';
 import { useAuthStore } from '@/stores/authStore';
+import { D2, MONO } from '@/constants/design';
 import type { Event } from '@/types';
 
-const DAY_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
-const CELL = (Dimensions.get('window').width - 32) / 7;
+const DAY_LABELS = ['PN','WT','ŚR','CZ','PT','SO','ND'];
+const { width } = Dimensions.get('window');
+const GRID_PAD = 16;
+const CELL_GAP = 4;
+const CELL = (width - GRID_PAD * 2 - CELL_GAP * 6) / 7;
+const CELL_H = 52;
 
 type CalFilters = { discipline: string; level: number | null; status: string; region: string; city: string };
 
@@ -29,15 +32,14 @@ export default function CalendarScreen() {
   const [filters, setFilters] = useState<CalFilters>({ discipline: '', level: null, status: '', region: '', city: '' });
 
   const dateFrom = format(currentMonth, 'yyyy-MM-dd');
-  const dateTo = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+  const dateTo   = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
   const isLoggedIn = useAuthStore(s => s.isLoggedIn);
   const savedIds = useSavedIds();
   const { mutate: toggleSave } = useToggleSave();
 
   const { data: events, isLoading } = useEvents({
-    dateFrom,
-    dateTo,
+    dateFrom, dateTo,
     discipline: filters.discipline || undefined,
     level: filters.level ?? undefined,
     status: filters.status || undefined,
@@ -50,8 +52,8 @@ export default function CalendarScreen() {
     const map: Record<string, Event[]> = {};
     (events ?? []).forEach(event => {
       const start = parseISO(event.startDate);
-      const end = parseISO(event.endDate);
-      const cur = new Date(start);
+      const end   = parseISO(event.endDate);
+      const cur   = new Date(start);
       while (cur <= end) {
         const key = format(cur, 'yyyy-MM-dd');
         if (!map[key]) map[key] = [];
@@ -62,18 +64,24 @@ export default function CalendarScreen() {
     return map;
   }, [events]);
 
+  // Max events on any day — for heatmap intensity
+  const maxCount = useMemo(() => {
+    return Math.max(1, ...Object.values(eventsByDate).map(a => a.length));
+  }, [eventsByDate]);
+
   const calendarDays = useMemo(() => {
     const gridStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
-    const gridEnd = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
+    const gridEnd   = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
     return eachDayOfInterval({ start: gridStart, end: gridEnd });
   }, [currentMonth]);
 
-  const selectedKey = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
+  const selectedKey    = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
   const selectedEvents = selectedKey ? (eventsByDate[selectedKey] ?? []) : [];
-  const activeCount = [filters.discipline, filters.level, filters.status, filters.region, filters.city].filter(Boolean).length;
+  const totalEvents    = events?.length ?? 0;
+  const activeCount    = [filters.discipline, filters.level, filters.status, filters.region, filters.city].filter(Boolean).length;
 
-  const monthLabel = format(currentMonth, 'LLLL yyyy', { locale: pl });
-  const monthLabelCap = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+  const monthLabel = format(currentMonth, 'LLLL', { locale: pl }).toUpperCase();
+  const yearLabel  = format(currentMonth, 'yyyy');
 
   function prevMonth() { setCurrentMonth(m => subMonths(m, 1)); setSelectedDate(null); }
   function nextMonth() { setCurrentMonth(m => addMonths(m, 1)); setSelectedDate(null); }
@@ -95,7 +103,7 @@ export default function CalendarScreen() {
         ListEmptyComponent={
           selectedDate ? (
             <View style={s.noEvents}>
-              <Text style={s.noEventsText}>Brak zawodów w tym dniu</Text>
+              <Text style={s.noEventsText}>BRAK ZAWODÓW</Text>
             </View>
           ) : null
         }
@@ -103,111 +111,78 @@ export default function CalendarScreen() {
           <View>
             {/* Header */}
             <View style={s.header}>
-              <Text style={s.title}>Kalendarz</Text>
-              <Pressable style={s.filterBtn} onPress={() => setSheetOpen(true)}>
-                <Ionicons name="options-outline" size={20} color={activeCount > 0 ? '#E87722' : '#888'} />
-                <Text style={[s.filterBtnText, activeCount > 0 && { color: '#E87722' }]}>
-                  Filtry{activeCount > 0 ? ` (${activeCount})` : ''}
+              <View>
+                <Text style={s.eyebrow}>{yearLabel}</Text>
+                <Text style={s.title}>Kalendarz</Text>
+              </View>
+              <Pressable
+                style={[s.filterBtn, activeCount > 0 && { backgroundColor: D2.accent, borderColor: D2.accent }]}
+                onPress={() => setSheetOpen(true)}>
+                <Ionicons name="options-outline" size={11} color={activeCount > 0 ? D2.bg : D2.text} />
+                <Text style={[s.filterBtnText, activeCount > 0 && { color: D2.bg }]}>
+                  {activeCount > 0 ? `FILTRY (${activeCount})` : 'FILTRY'}
                 </Text>
               </Pressable>
             </View>
-
-            {/* Active filter chips */}
-            {activeCount > 0 && (
-              <View style={s.activeFilters}>
-                {filters.discipline ? (
-                  <ActiveChip
-                    label={`🎯 ${DISCIPLINE_LABELS[filters.discipline] ?? filters.discipline}`}
-                    onRemove={() => setFilters(f => ({ ...f, discipline: '' }))}
-                  />
-                ) : null}
-                {filters.level ? (
-                  <ActiveChip label={`L${filters.level}`} onRemove={() => setFilters(f => ({ ...f, level: null }))} />
-                ) : null}
-                {filters.status ? (
-                  <ActiveChip
-                    label={filters.status === 'finished' ? 'Zakończone' : 'Nadchodzące'}
-                    onRemove={() => setFilters(f => ({ ...f, status: '' }))}
-                  />
-                ) : null}
-                {filters.region ? (
-                  <ActiveChip
-                    label={`📍 ${VOIVODESHIP_LABELS[filters.region] ?? filters.region}`}
-                    onRemove={() => setFilters(f => ({ ...f, region: '', city: '' }))}
-                  />
-                ) : null}
-                {filters.city ? (
-                  <ActiveChip
-                    label={`🏙 ${filters.city}`}
-                    onRemove={() => setFilters(f => ({ ...f, city: '' }))}
-                  />
-                ) : null}
-                <Pressable onPress={() => setFilters({ discipline: '', level: null, status: '', region: '', city: '' })}>
-                  <Text style={s.clearAll}>Wyczyść</Text>
-                </Pressable>
-              </View>
-            )}
 
             {/* Month navigation */}
             <View style={s.monthNav}>
-              <Pressable style={s.navBtn} onPress={prevMonth} hitSlop={8}>
-                <Ionicons name="chevron-back" size={22} color="#CCC" />
-              </Pressable>
-              <Text style={s.monthLabel}>{monthLabelCap}</Text>
-              <Pressable style={s.navBtn} onPress={nextMonth} hitSlop={8}>
-                <Ionicons name="chevron-forward" size={22} color="#CCC" />
-              </Pressable>
+              <View style={s.monthLeft}>
+                <Pressable style={s.navBtn} onPress={prevMonth} hitSlop={8}>
+                  <Text style={s.navArrow}>‹</Text>
+                </Pressable>
+                <Text style={s.monthLabel}>{monthLabel}</Text>
+                <Pressable style={s.navBtn} onPress={nextMonth} hitSlop={8}>
+                  <Text style={s.navArrow}>›</Text>
+                </Pressable>
+              </View>
+              <Text style={s.monthCount}>
+                <Text style={{ color: D2.accent }}>{totalEvents}</Text>
+                {' '}ZAWODÓW
+              </Text>
             </View>
 
-            {/* Day name labels */}
+            {/* Day labels */}
             <View style={s.dayLabelsRow}>
               {DAY_LABELS.map(d => (
-                <Text key={d} style={[s.dayLabel, (d === 'So' || d === 'Nd') && s.dayLabelWeekend]}>
-                  {d}
-                </Text>
+                <Text key={d} style={s.dayLabel}>{d}</Text>
               ))}
             </View>
 
             {/* Calendar grid */}
             {isLoading ? (
-              <View style={s.loadingGrid}>
-                <ActivityIndicator color="#E87722" />
-              </View>
+              <View style={s.loadingGrid}><ActivityIndicator color={D2.accent} /></View>
             ) : (
               <View style={s.grid}>
                 {calendarDays.map((day, i) => {
-                  const key = format(day, 'yyyy-MM-dd');
+                  const key       = format(day, 'yyyy-MM-dd');
                   const dayEvents = eventsByDate[key] ?? [];
-                  const inMonth = isSameMonth(day, currentMonth);
+                  const inMonth   = isSameMonth(day, currentMonth);
                   const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
                   const isTodayDay = isToday(day);
-                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                  const n         = inMonth ? dayEvents.length : 0;
+                  const intensity = n > 0 ? Math.min(n / maxCount, 1) : 0;
 
                   return (
                     <Pressable
                       key={i}
-                      style={[s.cell, isSelected && s.cellSelected, isTodayDay && !isSelected && s.cellToday]}
-                      onPress={() => setSelectedDate(isSelected ? null : day)}>
+                      style={[
+                        s.cell,
+                        isSelected && { backgroundColor: D2.accent },
+                        !isSelected && n > 0 && { backgroundColor: `rgba(249,115,22,${intensity * 0.45})` },
+                        isTodayDay && !isSelected && s.cellToday,
+                      ]}
+                      onPress={() => inMonth && setSelectedDate(isSelected ? null : day)}>
                       <Text style={[
                         s.cellNum,
                         !inMonth && s.cellNumOut,
                         isSelected && s.cellNumSelected,
                         isTodayDay && !isSelected && s.cellNumToday,
-                        isWeekend && inMonth && !isSelected && s.cellNumWeekend,
                       ]}>
                         {day.getDate()}
                       </Text>
-                      {dayEvents.length > 0 && inMonth && (
-                        <View style={s.dots}>
-                          {dayEvents.slice(0, 3).map((_, di) => (
-                            <View key={di} style={[s.dot, isSelected && s.dotSelected]} />
-                          ))}
-                          {dayEvents.length > 3 && (
-                            <Text style={[s.dotMore, isSelected && s.dotMoreSelected]}>
-                              +{dayEvents.length - 3}
-                            </Text>
-                          )}
-                        </View>
+                      {n > 0 && inMonth && (
+                        <Text style={[s.cellCount, isSelected && s.cellCountSelected]}>·{n}</Text>
                       )}
                     </Pressable>
                   );
@@ -218,13 +193,14 @@ export default function CalendarScreen() {
             {/* Selected day header */}
             {selectedDate && (
               <View style={s.selectedHeader}>
-                <Text style={s.selectedTitle}>
-                  {format(selectedDate, 'd MMMM', { locale: pl })}
-                </Text>
-                {selectedEvents.length > 0 && (
-                  <Text style={s.selectedCount}>
-                    {selectedEvents.length} {selectedEvents.length === 1 ? 'zawody' : 'zawodów'}
+                <View style={s.selectedLeft}>
+                  <Text style={s.selectedDay}>{format(selectedDate, 'd')}</Text>
+                  <Text style={s.selectedMeta}>
+                    {format(selectedDate, 'MMMM · EEEE', { locale: pl }).toUpperCase()}
                   </Text>
+                </View>
+                {selectedEvents.length > 0 && (
+                  <Text style={s.selectedCount}>{selectedEvents.length} ZAWODÓW</Text>
                 )}
               </View>
             )}
@@ -242,59 +218,68 @@ export default function CalendarScreen() {
   );
 }
 
-function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <Pressable style={s.activeChip} onPress={onRemove}>
-      <Text style={s.activeChipText}>{label}</Text>
-      <Ionicons name="close" size={12} color="#E87722" />
-    </Pressable>
-  );
-}
-
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0D0D0D' },
+  container:   { flex: 1, backgroundColor: D2.bg },
   listContent: { paddingBottom: 40 },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
-  title: { color: '#FFFFFF', fontSize: 28, fontWeight: '800' },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#2A2A2A' },
-  filterBtnText: { color: '#888', fontSize: 14, fontWeight: '600' },
-  activeFilters: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 10, gap: 8, alignItems: 'center' },
-  activeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, backgroundColor: '#E8772222', borderWidth: 1, borderColor: '#E87722' },
-  activeChipText: { color: '#E87722', fontSize: 12, fontWeight: '600' },
-  clearAll: { color: '#666', fontSize: 12 },
+  header: {
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14,
+  },
+  eyebrow: { fontFamily: MONO, fontSize: 10, color: D2.textMute, letterSpacing: 1.2, marginBottom: 3 },
+  title:   { color: D2.text, fontSize: 30, fontWeight: '700', letterSpacing: -0.8, lineHeight: 34 },
+  filterBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+    borderWidth: 1, borderColor: D2.strokeHi, marginBottom: 2,
+  },
+  filterBtnText: { fontFamily: MONO, fontSize: 10, color: D2.text, fontWeight: '600', letterSpacing: 1 },
 
-  monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  navBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center' },
-  monthLabel: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  monthNav: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingBottom: 12,
+  },
+  monthLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  navBtn: {
+    width: 28, height: 28, borderRadius: 6,
+    backgroundColor: D2.surface, borderWidth: 1, borderColor: D2.strokeHi,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  navArrow:   { color: D2.text, fontSize: 18, lineHeight: 22, fontWeight: '500' },
+  monthLabel: { color: D2.text, fontSize: 18, fontWeight: '700', letterSpacing: -0.3, paddingHorizontal: 8 },
+  monthCount: { fontFamily: MONO, fontSize: 10, color: D2.textSub, fontWeight: '600', letterSpacing: 1 },
 
-  dayLabelsRow: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 4 },
-  dayLabel: { width: CELL, textAlign: 'center', color: '#666', fontSize: 12, fontWeight: '600' },
-  dayLabelWeekend: { color: '#444' },
+  dayLabelsRow: { flexDirection: 'row', paddingHorizontal: GRID_PAD, marginBottom: 6, gap: CELL_GAP },
+  dayLabel: {
+    width: CELL, textAlign: 'center',
+    fontFamily: MONO, fontSize: 9.5, fontWeight: '600', color: D2.textMute, letterSpacing: 1.2,
+  },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, marginBottom: 8 },
-  cell: { width: CELL, height: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 10, gap: 2 },
-  cellSelected: { backgroundColor: '#E87722' },
-  cellToday: { borderWidth: 1, borderColor: '#E87722' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: GRID_PAD, marginBottom: 4, gap: CELL_GAP },
+  cell: {
+    width: CELL, height: CELL_H, borderRadius: 6,
+    alignItems: 'center', justifyContent: 'center', gap: 2,
+  },
+  cellToday:        { borderWidth: 1, borderColor: D2.accent },
+  cellNum:          { fontFamily: MONO, fontSize: 12, fontWeight: '600', color: D2.text },
+  cellNumOut:       { color: D2.textFaint },
+  cellNumSelected:  { color: D2.bg, fontWeight: '700' },
+  cellNumToday:     { color: D2.accent },
+  cellCount:        { fontFamily: MONO, fontSize: 8, fontWeight: '700', color: D2.text, opacity: 0.7 },
+  cellCountSelected: { color: D2.bg, opacity: 1 },
 
-  cellNum: { color: '#CCC', fontSize: 15, fontWeight: '500' },
-  cellNumOut: { color: '#2A2A2A' },
-  cellNumSelected: { color: '#FFF', fontWeight: '700' },
-  cellNumToday: { color: '#E87722', fontWeight: '700' },
-  cellNumWeekend: { color: '#777' },
+  loadingGrid: { height: 260, alignItems: 'center', justifyContent: 'center' },
 
-  dots: { flexDirection: 'row', gap: 2, alignItems: 'center' },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#E87722' },
-  dotSelected: { backgroundColor: 'rgba(255,255,255,0.9)' },
-  dotMore: { color: '#E87722', fontSize: 8, fontWeight: '700' },
-  dotMoreSelected: { color: '#FFF' },
-
-  loadingGrid: { height: 280, alignItems: 'center', justifyContent: 'center' },
-
-  selectedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#1A1A1A', marginTop: 4 },
-  selectedTitle: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  selectedCount: { color: '#888', fontSize: 13 },
+  selectedHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderTopWidth: 1, borderTopColor: D2.stroke, marginTop: 8,
+  },
+  selectedLeft:  { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  selectedDay:   { color: D2.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  selectedMeta:  { fontFamily: MONO, fontSize: 10, fontWeight: '600', color: D2.textSub, letterSpacing: 1.2 },
+  selectedCount: { fontFamily: MONO, fontSize: 10, fontWeight: '600', color: D2.accent, letterSpacing: 1.2 },
 
   noEvents: { padding: 40, alignItems: 'center' },
-  noEventsText: { color: '#555', fontSize: 14 },
+  noEventsText: { fontFamily: MONO, fontSize: 12, color: D2.textMute, letterSpacing: 1.2 },
 });

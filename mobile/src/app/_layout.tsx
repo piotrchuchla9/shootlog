@@ -21,17 +21,17 @@ const toastConfig = {
   success: (props: BaseToastProps) => (
     <BaseToast
       {...props}
-      style={{ borderLeftColor: '#E87722', backgroundColor: '#1A1A1A', borderRadius: 12, height: 52 }}
-      text1Style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}
-      text2Style={{ color: '#888' }}
+      style={{ borderLeftColor: '#F97316', backgroundColor: '#181613', borderRadius: 10, height: 52, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}
+      text1Style={{ color: '#f5efe6', fontSize: 14, fontWeight: '600' }}
+      text2Style={{ color: 'rgba(245,239,230,0.55)' }}
     />
   ),
   error: (props: BaseToastProps) => (
     <ErrorToast
       {...props}
-      style={{ borderLeftColor: '#FF4444', backgroundColor: '#1A1A1A', borderRadius: 12, height: 52 }}
-      text1Style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}
-      text2Style={{ color: '#888' }}
+      style={{ borderLeftColor: '#FF4444', backgroundColor: '#181613', borderRadius: 10, height: 52, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}
+      text1Style={{ color: '#f5efe6', fontSize: 14, fontWeight: '600' }}
+      text2Style={{ color: 'rgba(245,239,230,0.55)' }}
     />
   ),
 };
@@ -47,17 +47,17 @@ function AppContent() {
   useEffect(() => { restoreSession(); }, []);
   usePushNotifications();
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0D0D0D' } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0c0b0a' } }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen
         name="event/[id]"
         options={{
           headerShown: true,
-          headerStyle: { backgroundColor: '#0D0D0D' },
-          headerTintColor: '#FFFFFF',
+          headerStyle: { backgroundColor: '#0c0b0a' },
+          headerTintColor: '#f5efe6',
           headerTitle: '',
           headerBackTitle: 'Wróć',
-          contentStyle: { backgroundColor: '#0D0D0D' },
+          contentStyle: { backgroundColor: '#0c0b0a' },
         }}
       />
       <Stack.Screen name="auth" options={{ headerShown: false, presentation: 'modal' }} />
@@ -65,11 +65,11 @@ function AppContent() {
         name="profile/edit"
         options={{
           headerShown: true,
-          headerStyle: { backgroundColor: '#0D0D0D' },
-          headerTintColor: '#FFFFFF',
+          headerStyle: { backgroundColor: '#0c0b0a' },
+          headerTintColor: '#f5efe6',
           headerTitle: 'Edytuj profil',
           headerBackTitle: 'Wróć',
-          contentStyle: { backgroundColor: '#0D0D0D' },
+          contentStyle: { backgroundColor: '#0c0b0a' },
         }}
       />
     </Stack>

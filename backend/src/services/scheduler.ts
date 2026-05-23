@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { scrapeIpscPl } from './scrapers/ipsc_pl';
 import { scrapePzss } from './scrapers/pzss';
+import { scrapePortalStrzelecki } from './scrapers/portalstrzelecki';
 import { prisma } from '../lib/prisma';
 
 async function markFinishedEvents() {
@@ -29,8 +30,15 @@ export async function initScheduler() {
     await markFinishedEvents();
   });
 
+  // Co 24 godziny — portalstrzelecki.pl (iCal feed)
+  cron.schedule('0 8 * * *', async () => {
+    console.log('[scheduler] running portalstrzelecki scraper...');
+    await scrapePortalStrzelecki().catch((err) => console.error('[scheduler] portalstrzelecki error:', err));
+    await markFinishedEvents();
+  });
+
   // Codziennie o północy — niezależnie od scraperów
   cron.schedule('0 0 * * *', markFinishedEvents);
 
-  console.log('[scheduler] initialized — ipsc_pl every 6h, pzss every 12h, status cleanup daily');
+  console.log('[scheduler] initialized — ipsc_pl every 6h, pzss every 12h, portalstrzelecki daily at 8am, status cleanup daily');
 }

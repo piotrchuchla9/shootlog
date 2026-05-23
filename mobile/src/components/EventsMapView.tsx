@@ -3,9 +3,12 @@ import MapView, { Marker, Region, MarkerPressEvent } from 'react-native-maps';
 import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
+import { format, parseISO } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { MapEvent } from '@/types';
-import { LEVEL_COLORS, DISCIPLINE_EMOJI } from '@/constants/disciplines';
+import { DISCIPLINE_COLORS, DISCIPLINE_SHORTS } from '@/constants/disciplines';
+import { D2, MONO } from '@/constants/design';
 
 async function fetchLocation(): Promise<{ lat: number; lng: number } | null> {
   try {
@@ -98,7 +101,8 @@ export function EventsMapView({ events, loading }: Props) {
           const [lat, lng] = key.split(',').map(Number);
           const count = clusterEvts.length;
           const first = clusterEvts[0];
-          const color = count > 1 ? '#E87722' : (LEVEL_COLORS[first.level] ?? '#E87722');
+          const discColor = DISCIPLINE_COLORS[first.discipline] ?? D2.accent;
+          const isCluster = count > 1;
 
           return (
             <Marker
@@ -107,11 +111,16 @@ export function EventsMapView({ events, loading }: Props) {
               coordinate={{ latitude: lat, longitude: lng }}
               tracksViewChanges={false}
             >
-              <View style={[s.pin, { backgroundColor: color }]}>
-                {count > 1
-                  ? <Text style={s.pinCount}>{count}</Text>
-                  : <Text style={s.pinEmoji}>{DISCIPLINE_EMOJI[first.discipline] ?? '🎯'}</Text>}
-              </View>
+              {isCluster ? (
+                <View style={s.clusterPin}>
+                  <Text style={s.clusterPinCount}>{count}</Text>
+                </View>
+              ) : (
+                <View style={[s.pin, { backgroundColor: discColor }]}>
+                  <Text style={s.pinShort}>{DISCIPLINE_SHORTS[first.discipline] ?? 'PST'}</Text>
+                  <Text style={s.pinLevel}>L{first.level}</Text>
+                </View>
+              )}
             </Marker>
           );
         })}
@@ -119,56 +128,66 @@ export function EventsMapView({ events, loading }: Props) {
 
       {loading && (
         <View style={s.loadingOverlay}>
-          <ActivityIndicator color="#E87722" />
+          <ActivityIndicator color={D2.accent} />
         </View>
       )}
 
       {!loading && events.length === 0 && (
         <View style={s.emptyOverlay}>
-          <Text style={s.emptyText}>Brak zawodów z lokalizacją</Text>
+          <Text style={s.emptyText}>BRAK ZAWODÓW Z LOKALIZACJĄ</Text>
           <Text style={s.emptySub}>Dane uzupełniane w tle</Text>
         </View>
       )}
 
       <View style={s.controls}>
         <Pressable style={s.controlBtn} onPress={zoomIn}>
-          <Ionicons name="add" size={22} color="#FFF" />
+          <Ionicons name="add" size={20} color={D2.text} />
         </Pressable>
         <View style={s.controlDivider} />
         <Pressable style={s.controlBtn} onPress={zoomOut}>
-          <Ionicons name="remove" size={22} color="#FFF" />
+          <Ionicons name="remove" size={20} color={D2.text} />
         </Pressable>
       </View>
 
       <Pressable style={s.locBtn} onPress={centerOnUser}>
-        <Ionicons name="locate" size={20} color={userLocation ? '#E87722' : '#FFF'} />
+        <Ionicons name="locate" size={18} color={userLocation ? D2.accent : D2.textSub} />
       </Pressable>
 
-      {/* Bottom card — single event or list */}
-      {selected.length === 1 && (
-        <Pressable style={s.card} onPress={() => router.push(`/event/${selected[0].id}`)}>
-          <View style={s.cardInner}>
-            <Text style={s.cardMeta}>{DISCIPLINE_EMOJI[selected[0].discipline] ?? '🎯'} L{selected[0].level} · {selected[0].city ?? '—'}</Text>
-            <Text style={s.cardName} numberOfLines={2}>{selected[0].name}</Text>
-            <Text style={s.cardDate}>{new Date(selected[0].startDate).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#888" />
-        </Pressable>
-      )}
+      {selected.length === 1 && (() => {
+        const ev = selected[0];
+        const discColor = DISCIPLINE_COLORS[ev.discipline] ?? D2.accent;
+        const dateStr = format(parseISO(ev.startDate), 'd MMM yyyy', { locale: pl }).toUpperCase();
+        return (
+          <Pressable style={s.card} onPress={() => router.push(`/event/${ev.id}`)}>
+            <View style={[s.cardStrip, { backgroundColor: discColor }]} />
+            <View style={s.cardInner}>
+              <Text style={s.cardMeta}>L{ev.level} · {ev.city ?? '—'}</Text>
+              <Text style={s.cardName} numberOfLines={2}>{ev.name}</Text>
+              <Text style={s.cardDate}>{dateStr}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={D2.textMute} />
+          </Pressable>
+        );
+      })()}
 
       {selected.length > 1 && (
-        <View style={s.clusterCard}>
-          <Text style={s.clusterTitle}>{selected.length} zawody w tym miejscu</Text>
-          <ScrollView style={s.clusterList} showsVerticalScrollIndicator={false}>
-            {selected.map(ev => (
-              <Pressable key={ev.id} style={s.clusterRow} onPress={() => router.push(`/event/${ev.id}`)}>
-                <View style={s.clusterRowInner}>
-                  <Text style={s.clusterMeta}>{DISCIPLINE_EMOJI[ev.discipline] ?? '🎯'} L{ev.level} · {new Date(ev.startDate).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}</Text>
-                  <Text style={s.clusterName} numberOfLines={1}>{ev.name}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color="#888" />
-              </Pressable>
-            ))}
+        <View style={s.multiCard}>
+          <Text style={s.multiTitle}>{selected.length} ZAWODY W TYM MIEJSCU</Text>
+          <ScrollView style={s.multiList} showsVerticalScrollIndicator={false}>
+            {selected.map(ev => {
+              const discColor = DISCIPLINE_COLORS[ev.discipline] ?? D2.accent;
+              const dateStr = format(parseISO(ev.startDate), 'd MMM', { locale: pl }).toUpperCase();
+              return (
+                <Pressable key={ev.id} style={s.multiRow} onPress={() => router.push(`/event/${ev.id}`)}>
+                  <View style={[s.multiStrip, { backgroundColor: discColor }]} />
+                  <View style={s.multiRowInner}>
+                    <Text style={s.multiMeta}>L{ev.level} · {dateStr}</Text>
+                    <Text style={s.multiName} numberOfLines={1}>{ev.name}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={14} color={D2.textMute} />
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
       )}
@@ -176,57 +195,81 @@ export function EventsMapView({ events, loading }: Props) {
   );
 }
 
+const SHADOW = {
+  shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8,
+};
+
 const s = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
 
+  // Single discipline pin
   pin: {
-    width: 34, height: 34, borderRadius: 17,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: '#FFF',
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
+    paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center', gap: 1,
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
-  pinCount: { color: '#FFF', fontSize: 13, fontWeight: '800' },
-  pinEmoji: { fontSize: 16 },
+  pinShort: { fontFamily: MONO, color: '#FFF', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  pinLevel: { fontFamily: MONO, color: 'rgba(255,255,255,0.7)', fontSize: 8, fontWeight: '600' },
 
-  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0D0D0D88' },
+  // Cluster pin
+  clusterPin: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: D2.surface, borderWidth: 2, borderColor: D2.accent,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  clusterPinCount: { fontFamily: MONO, color: D2.accent, fontSize: 13, fontWeight: '800' },
 
-  emptyOverlay: { position: 'absolute', bottom: 120, left: 20, right: 20, backgroundColor: '#1A1A1A', borderRadius: 14, padding: 16, alignItems: 'center' },
-  emptyText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
-  emptySub: { color: '#888', fontSize: 13, marginTop: 4 },
+  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: `${D2.bg}AA` },
+
+  emptyOverlay: { position: 'absolute', bottom: 120, left: 20, right: 20, backgroundColor: D2.surface, borderRadius: 12, borderWidth: 1, borderColor: D2.stroke, padding: 16, alignItems: 'center', gap: 4 },
+  emptyText: { fontFamily: MONO, color: D2.text, fontSize: 11, fontWeight: '700', letterSpacing: 1.2 },
+  emptySub: { fontFamily: MONO, color: D2.textMute, fontSize: 10, letterSpacing: 0.5 },
 
   controls: {
     position: 'absolute', top: 16, right: 16,
-    backgroundColor: '#1A1A1AEE', borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
-    elevation: 5,
+    backgroundColor: D2.surface, borderRadius: 10,
+    borderWidth: 1, borderColor: D2.strokeHi,
+    overflow: 'hidden', ...SHADOW,
   },
-  controlBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  controlBtnDisabled: { opacity: 0.4 },
-  controlDivider: { height: 1, backgroundColor: '#2A2A2A', marginHorizontal: 8 },
+  controlBtn: { width: 42, height: 42, justifyContent: 'center', alignItems: 'center' },
+  controlDivider: { height: 1, backgroundColor: D2.stroke },
   locBtn: {
     position: 'absolute', bottom: 16, right: 16,
-    width: 44, height: 44, borderRadius: 12,
-    backgroundColor: '#1A1A1AEE', justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
-    elevation: 5,
+    width: 42, height: 42, borderRadius: 10,
+    backgroundColor: D2.surface, borderWidth: 1, borderColor: D2.strokeHi,
+    justifyContent: 'center', alignItems: 'center', ...SHADOW,
   },
 
-  // Single event card
-  card: { position: 'absolute', bottom: 24, left: 16, right: 16, backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
-  cardInner: { flex: 1 },
-  cardMeta: { color: '#888', fontSize: 12, fontWeight: '600', marginBottom: 4 },
-  cardName: { color: '#FFF', fontSize: 16, fontWeight: '700', lineHeight: 22 },
-  cardDate: { color: '#E87722', fontSize: 13, marginTop: 4 },
+  // Single event bottom card
+  card: {
+    position: 'absolute', bottom: 24, left: 16, right: 16,
+    backgroundColor: D2.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: D2.strokeHi,
+    flexDirection: 'row', alignItems: 'center', overflow: 'hidden',
+    ...SHADOW,
+  },
+  cardStrip: { width: 3, alignSelf: 'stretch' },
+  cardInner: { flex: 1, padding: 14, gap: 3 },
+  cardMeta: { fontFamily: MONO, color: D2.textMute, fontSize: 9.5, fontWeight: '600', letterSpacing: 1.2 },
+  cardName: { color: D2.text, fontSize: 15, fontWeight: '700', lineHeight: 21 },
+  cardDate: { fontFamily: MONO, color: D2.accent, fontSize: 10, fontWeight: '600', letterSpacing: 0.8 },
 
-  // Cluster card
-  clusterCard: { position: 'absolute', bottom: 24, left: 16, right: 16, backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, maxHeight: 260, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
-  clusterTitle: { color: '#888', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-  clusterList: { flexGrow: 0 },
-  clusterRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#2A2A2A' },
-  clusterRowInner: { flex: 1 },
-  clusterMeta: { color: '#888', fontSize: 12, marginBottom: 2 },
-  clusterName: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  // Multi-event bottom card
+  multiCard: {
+    position: 'absolute', bottom: 24, left: 16, right: 16,
+    backgroundColor: D2.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: D2.strokeHi,
+    maxHeight: 280, overflow: 'hidden', ...SHADOW,
+  },
+  multiTitle: { fontFamily: MONO, color: D2.textMute, fontSize: 9.5, fontWeight: '700', letterSpacing: 1.2, padding: 14, paddingBottom: 10 },
+  multiList: { flexGrow: 0 },
+  multiRow: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: D2.stroke, overflow: 'hidden' },
+  multiStrip: { width: 3, alignSelf: 'stretch' },
+  multiRowInner: { flex: 1, padding: 12, gap: 3 },
+  multiMeta: { fontFamily: MONO, color: D2.textMute, fontSize: 9, fontWeight: '600', letterSpacing: 1 },
+  multiName: { color: D2.text, fontSize: 13, fontWeight: '600' },
 });

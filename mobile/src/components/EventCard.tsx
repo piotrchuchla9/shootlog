@@ -1,28 +1,40 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { format, parseISO } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import type { Event } from '@/types';
-import { DISCIPLINE_EMOJI, DISCIPLINE_LABELS, LEVEL_COLORS } from '@/constants/disciplines';
+import { DISCIPLINE_LABELS, DISCIPLINE_COLORS } from '@/constants/disciplines';
+import { D2, MONO } from '@/constants/design';
 
-const C = {
-  card: '#1A1A1A',
-  border: '#2A2A2A',
-  text: '#FFFFFF',
-  textSecondary: '#888888',
-  openBadge: '#15803D',
-  openText: '#86EFAC',
-  primary: '#E87722',
-};
-
-function isRegistrationOpen(event: Event): boolean {
-  if (event.status !== 'upcoming') return false;
-  const now = Date.now();
-  const open  = event.registrationOpen  ? new Date(event.registrationOpen).getTime()  : null;
-  const close = event.registrationClose ? new Date(event.registrationClose).getTime() : null;
-  if (open && open > now) return false;
-  if (close && close < now) return false;
-  return !!open;
+function shortDate(startDate: string, endDate: string): string {
+  const s = parseISO(startDate);
+  const e = parseISO(endDate);
+  if (startDate === endDate) return format(s, 'd MMM', { locale: pl });
+  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear())
+    return `${s.getDate()}–${format(e, 'd MMM', { locale: pl })}`;
+  return `${format(s, 'd MMM', { locale: pl })} – ${format(e, 'd MMM', { locale: pl })}`;
 }
+
+type SignupStatus = 'open' | 'closing' | 'closed';
+
+function getSignupStatus(event: Event): SignupStatus {
+  if (event.status !== 'upcoming') return 'closed';
+  const now = Date.now();
+  const close = event.registrationClose ? new Date(event.registrationClose).getTime() : null;
+  const open  = event.registrationOpen  ? new Date(event.registrationOpen).getTime()  : null;
+  if (!open) return 'closed';
+  if (open > now) return 'closed';
+  if (close && close < now) return 'closed';
+  if (close && (close - now) < 1000 * 60 * 60 * 72) return 'closing';
+  return 'open';
+}
+
+const STATUS = {
+  open:    { color: '#2BAD68', label: 'OTWARTE' },
+  closing: { color: '#C4A632', label: 'KOŃCZĄ SIĘ' },
+  closed:  { color: 'rgba(245,239,230,0.28)', label: 'ZAMKNIĘTE' },
+};
 
 interface Props {
   event: Event;
@@ -30,117 +42,110 @@ interface Props {
   onToggleSave?: () => void;
 }
 
-function formatEventDate(startDate: string, endDate: string): string {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const sameDay = start.toDateString() === end.toDateString();
-  if (sameDay) {
-    return start.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
-  }
-  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
-  if (sameMonth) {
-    const startDay = start.toLocaleDateString('pl-PL', { day: 'numeric' });
-    const endFull = end.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
-    return `${startDay}–${endFull}`;
-  }
-  const startShort = start.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
-  const endShort = end.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' });
-  return `${startShort} – ${endShort}`;
-}
-
 export function EventCard({ event, saved = false, onToggleSave }: Props) {
   const router = useRouter();
-  const dateStr = formatEventDate(event.startDate, event.endDate);
-  const open = isRegistrationOpen(event);
-  const levelColor = LEVEL_COLORS[event.level] ?? '#6B7280';
-  const feeStr = event.entryFee ? `${(event.entryFee / 100).toFixed(0)} zł` : null;
+  const discColor = DISCIPLINE_COLORS[event.discipline] ?? '#888';
+  const title     = DISCIPLINE_LABELS[event.discipline] ?? event.discipline;
+  const signupStatus = getSignupStatus(event);
+  const st = STATUS[signupStatus];
+  const date = shortDate(event.startDate, event.endDate);
+  const location = event.city ?? event.location;
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [s.card, pressed && s.pressed]}
       onPress={() => router.push(`/event/${event.id}`)}>
 
-      <View style={styles.header}>
-        <Text style={styles.discipline}>
-          {DISCIPLINE_EMOJI[event.discipline] ?? '🎯'} {DISCIPLINE_LABELS[event.discipline] ?? event.discipline}
-        </Text>
-        <View style={[styles.levelBadge, { backgroundColor: levelColor + '22', borderColor: levelColor }]}>
-          <Text style={[styles.levelText, { color: levelColor }]}>L{event.level}</Text>
-        </View>
-        {open && (
-          <View style={styles.openBadge}>
-            <Text style={styles.openText}>Zapisy otwarte</Text>
+      {/* Discipline color strip */}
+      <View style={[s.strip, { backgroundColor: discColor }]} />
+
+      <View style={s.inner}>
+        {/* Top row: disc tag + level chip + signup dot */}
+        <View style={s.topRow}>
+          <View style={s.discTag}>
+            <Text style={[s.discLabel, { color: discColor }]}>{title.toUpperCase()}</Text>
           </View>
-        )}
-        {onToggleSave && (
-          <Pressable
-            onPress={onToggleSave}
-            hitSlop={8}
-            style={styles.bookmark}>
-            <Ionicons
-              name={saved ? 'bookmark' : 'bookmark-outline'}
-              size={20}
-              color={saved ? C.primary : '#555'}
-            />
-          </Pressable>
-        )}
-      </View>
+          <View style={s.levelChip}>
+            <Text style={s.levelText}>L{event.level}</Text>
+          </View>
+          <View style={s.signupDot}>
+            <View style={[s.dot, { backgroundColor: st.color, shadowColor: st.color }]} />
+            <Text style={[s.signupLabel, { color: st.color }]}>{st.label}</Text>
+          </View>
+          {onToggleSave && (
+            <Pressable onPress={onToggleSave} hitSlop={10} style={s.bookmark}>
+              <Ionicons
+                name={saved ? 'bookmark' : 'bookmark-outline'}
+                size={16}
+                color={saved ? D2.accent : D2.textMute}
+              />
+            </Pressable>
+          )}
+        </View>
 
-      <Text style={styles.name} numberOfLines={2}>{event.name}</Text>
+        {/* Event name */}
+        <Text style={s.name} numberOfLines={2}>{event.name}</Text>
 
-      <Text style={styles.meta}>
-        {dateStr}  ·  {event.city ?? event.location}
-      </Text>
-
-      <View style={styles.footer}>
-        {event.currentShooters != null && event.maxShooters != null && (
-          <Text style={styles.shooters}>
-            {event.currentShooters}/{event.maxShooters} zawodników
-          </Text>
-        )}
-        {feeStr && <Text style={styles.fee}>{feeStr}</Text>}
+        {/* Meta row: date + location */}
+        <View style={s.metaRow}>
+          <Ionicons name="calendar-outline" size={10} color={D2.textSub} />
+          <Text style={s.metaText}>{date}</Text>
+          <Ionicons name="location-outline" size={10} color={D2.textSub} />
+          <Text style={s.metaText} numberOfLines={1}>{location}</Text>
+          {event.maxShooters != null && (
+            <Text style={s.shooters}>{event.currentShooters ?? '?'}/{event.maxShooters}</Text>
+          )}
+        </View>
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   card: {
-    backgroundColor: C.card,
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 16,
-    marginVertical: 6,
-    borderWidth: 1,
-    borderColor: C.border,
-    gap: 6,
-  },
-  cardPressed: { opacity: 0.75 },
-  header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  bookmark: { marginLeft: 'auto' },
-  discipline: { color: C.textSecondary, fontSize: 13, fontWeight: '500' },
-  levelBadge: {
-    borderRadius: 4,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    borderRadius: 10,
+    backgroundColor: D2.surface,
     borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    borderColor: D2.stroke,
+    overflow: 'hidden',
   },
-  levelText: { fontSize: 11, fontWeight: '700' },
-  openBadge: {
-    backgroundColor: C.openBadge + '33',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+  pressed: { opacity: 0.7 },
+  strip: { width: 3 },
+  inner: { flex: 1, padding: 14, paddingLeft: 12, gap: 8 },
+
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  discTag: { flexDirection: 'row', alignItems: 'center' },
+  discLabel: { fontFamily: MONO, fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
+
+  levelChip: {
+    paddingHorizontal: 6, paddingVertical: 3,
+    borderRadius: 4, borderWidth: 1, borderColor: D2.strokeHi,
   },
-  openText: { color: C.openText, fontSize: 11, fontWeight: '600' },
-  name: { color: C.text, fontSize: 16, fontWeight: '600', lineHeight: 22 },
-  meta: { color: C.textSecondary, fontSize: 13 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
-  shooters: { color: C.textSecondary, fontSize: 12 },
-  fee: { color: C.primary, fontSize: 12, fontWeight: '600' },
+  levelText: { fontFamily: MONO, fontSize: 10, fontWeight: '600', color: D2.text, letterSpacing: 0.5 },
+
+  signupDot: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dot: {
+    width: 5, height: 5, borderRadius: 3,
+    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 4, elevation: 3,
+  },
+  signupLabel: { fontFamily: MONO, fontSize: 9, fontWeight: '600', letterSpacing: 1 },
+
+  bookmark: { marginLeft: 'auto' },
+
+  name: {
+    color: D2.text, fontSize: 16, fontWeight: '600',
+    letterSpacing: -0.3, lineHeight: 22,
+  },
+
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'nowrap' },
+  metaText: {
+    fontFamily: MONO, fontSize: 11, color: D2.textSub, fontWeight: '500',
+    flexShrink: 1,
+  },
+  shooters: {
+    fontFamily: MONO, fontSize: 11, color: D2.textMute, marginLeft: 'auto',
+  },
 });

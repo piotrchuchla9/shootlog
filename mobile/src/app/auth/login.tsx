@@ -85,17 +85,17 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0D0D0D' },
+  container: { flex: 1, backgroundColor: '#0c0b0a' },
   inner: { flex: 1, paddingHorizontal: 28, justifyContent: 'space-between', paddingBottom: 24, paddingTop: 60 },
   hero: { alignItems: 'center', gap: 12 },
   logo: { fontSize: 72 },
-  appName: { color: '#FFF', fontSize: 36, fontWeight: '900', letterSpacing: -0.5 },
-  tagline: { color: '#888', fontSize: 16, textAlign: 'center' },
+  appName: { color: '#f5efe6', fontSize: 36, fontWeight: '900', letterSpacing: -0.5 },
+  tagline: { color: 'rgba(245,239,230,0.55)', fontSize: 16, textAlign: 'center' },
   buttons: { gap: 14 },
   appleBtn: { height: 54, width: '100%' },
   googleBtn: {
     backgroundColor: '#FFF',
-    borderRadius: 14,
+    borderRadius: 10,
     height: 54,
     flexDirection: 'row',
     alignItems: 'center',
@@ -105,5 +105,5 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   googleIcon: { fontSize: 18, fontWeight: '800', color: '#4285F4' },
   googleText: { fontSize: 16, fontWeight: '600', color: '#333' },
-  legal: { color: '#555', fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  legal: { color: 'rgba(245,239,230,0.28)', fontSize: 12, textAlign: 'center', lineHeight: 18 },
 });

@@ -65,7 +65,19 @@
       "Bash(convert --version)",
       "Bash(python3 -c \"import cairosvg\")",
       "Bash(python3 *)",
-      "Bash(git -C /Users/piotrchuchla/Desktop/code/shootlog/mobile log --oneline -5)"
+      "Bash(git -C /Users/piotrchuchla/Desktop/code/shootlog/mobile log --oneline -5)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(gunzip -c \"/Users/piotrchuchla/.claude/projects/-Users-piotrchuchla-Desktop-code-shootlog/3347fff5-a01b-4e10-849c-a72326270e41/tool-results/webfetch-1779485688672-ife2mu.bin\")",
+      "Bash(tar -xf \"/Users/piotrchuchla/.claude/projects/-Users-piotrchuchla-Desktop-code-shootlog/3347fff5-a01b-4e10-849c-a72326270e41/tool-results/webfetch-1779485688672-ife2mu.bin\" -C /tmp/shootlog_design)",
+      "Bash(psql *)",
+      "WebSearch",
+      "WebFetch(domain:www.wzss.pl)",
+      "WebFetch(domain:portalstrzelecki.pl)",
+      "WebFetch(domain:docs.expo.dev)",
+      "WebFetch(domain:expo.dev)",
+      "Bash(grep -v \"^$\")",
+      "Bash(pod install *)",
+      "Bash(kill 11465)"
     ]
   }
 }

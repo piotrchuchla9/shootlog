@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import { prisma } from '../../lib/prisma';
-import { sleep, guessVoivodeship } from './utils';
+import { sleep, guessVoivodeship, parseLevelFromName } from './utils';
 import { sendNewEventNotifications } from '../push';
 import { geocodeEvent } from '../geocoding';
 import { Event } from '@prisma/client';
@@ -100,7 +100,7 @@ export async function scrapePzss(): Promise<void> {
       location: city || 'Polska',
       city: city || undefined,
       voivodeship: city ? guessVoivodeship(city) : undefined,
-      level: 2, // PZSS events are mostly national/regional level
+      level: parseLevelFromName(name, 2),
       discipline: parsePzssDiscipline(abbrs),
       startDate: parsed.start,
       endDate: parsed.end,

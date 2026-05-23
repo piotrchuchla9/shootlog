@@ -17,6 +17,7 @@ import { initScheduler } from './services/scheduler';
 import { geocodeMissingEvents } from './services/geocoding';
 import { scrapeIpscPl } from './services/scrapers/ipsc_pl';
 import { scrapePzss } from './services/scrapers/pzss';
+import { scrapePortalStrzelecki } from './services/scrapers/portalstrzelecki';
 
 const app = Fastify({ logger: true });
 
@@ -47,9 +48,14 @@ async function start() {
       scrapePzss().catch(console.error);
       return { started: 'pzss' };
     }
+    if (source === 'portalstrzelecki') {
+      scrapePortalStrzelecki().catch(console.error);
+      return { started: 'portalstrzelecki' };
+    }
     if (source === 'all') {
       scrapeIpscPl().catch(console.error);
       scrapePzss().catch(console.error);
+      scrapePortalStrzelecki().catch(console.error);
       return { started: 'all' };
     }
     return reply.status(400).send({ error: 'unknown source' });

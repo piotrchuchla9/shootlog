@@ -6,7 +6,13 @@
     "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "description": "Aplikacja dla zawodników strzelectwa sportowego — IPSC, PZSS. Przeglądaj zawody, zapisuj ulubione, śledź terminy i otrzymuj powiadomienia o nowych eventach.",
-    "keywords": ["strzelectwo", "IPSC", "PZSS", "zawody", "shooting"],
+    "keywords": [
+      "strzelectwo",
+      "IPSC",
+      "PZSS",
+      "zawody",
+      "shooting"
+    ],
     "primaryColor": "#E87722",
     "icon": "./assets/images/icon.png",
     "scheme": "shootlog",
@@ -61,6 +67,21 @@
         "@react-native-google-signin/google-signin",
         {
           "iosUrlScheme": "com.googleusercontent.apps.913794272204-jq6tvjg50ma8bol4p685694ug0gppja3"
+        }
+      ],
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "pl.shootlog.app.widgets",
+          "groupIdentifier": "group.pl.shootlog.app",
+          "widgets": [
+            {
+              "name": "NearestEventsWidget",
+              "displayName": "Najbliższe zawody",
+              "description": "Nadchodzące zawody strzeleckie",
+              "supportedFamilies": ["systemSmall", "systemMedium"]
+            }
+          ]
         }
       ]
     ],
